@@ -3,10 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import { useFileSystem } from '@/composables/useFileSystem';
 import { useWebTorrent } from '@/composables/useWebTorrent';
 import { FileVideo, Link, Magnet, Upload } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 interface Emits {
     (e: 'sourceSelected', url: string, type: 'local' | 'upload' | 'magnet' | 'remote'): void;
@@ -15,7 +16,17 @@ interface Emits {
 const emit = defineEmits<Emits>();
 
 const { isSupported: isFileSystemSupported, openFilePicker, createFileURL } = useFileSystem();
-const { loadMagnet, isLoading: isTorrentLoading, error: torrentError } = useWebTorrent();
+const { loadMagnet, stopTorrent, isLoading: isTorrentLoading, error: torrentError, torrentInfo, formatBytes, formatSpeed } = useWebTorrent();
+
+const downloadProgress = computed(() => {
+    if (!torrentInfo.value) return 0;
+    return Math.round(torrentInfo.value.progress * 100);
+});
+
+const handleCancelTorrent = () => {
+    stopTorrent();
+    magnetInput.value = '';
+};
 
 const magnetInput = ref('');
 const remoteUrlInput = ref('');
@@ -121,7 +132,7 @@ const handleRemoteUrl = () => {
                         id="upload-input"
                         ref="uploadInput"
                         type="file"
-                        accept="video/*"
+                        accept="video/*, .m3u8, .mpd, .m3u"
                         @change="handleFileUpload"
                         class="cursor-pointer"
                     />
@@ -142,15 +153,55 @@ const handleRemoteUrl = () => {
                             type="text"
                             placeholder="magnet:?xt=urn:btih:..."
                             class="flex-1"
+                            :disabled="isTorrentLoading"
                         />
                         <Button
+                            v-if="!isTorrentLoading"
                             @click="handleMagnetLink"
-                            :disabled="!magnetInput.trim() || isTorrentLoading"
+                            :disabled="!magnetInput.trim()"
                         >
                             <Magnet class="mr-2 h-4 w-4" />
-                            {{ isTorrentLoading ? 'Loading...' : 'Load' }}
+                            Load
+                        </Button>
+                        <Button
+                            v-else
+                            @click="handleCancelTorrent"
+                            variant="destructive"
+                        >
+                            Cancel
                         </Button>
                     </div>
+                    
+                    <!-- Progress Bar & Stats -->
+                    <div v-if="isTorrentLoading" class="space-y-3">
+                        <div v-if="!torrentInfo" class="text-sm text-muted-foreground">
+                            Connecting to peers...
+                        </div>
+                        <template v-else>
+                            <div class="space-y-1.5">
+                                <Progress :model-value="downloadProgress" class="h-2" />
+                                <div class="flex items-center justify-between text-xs text-muted-foreground">
+                                    <span class="font-medium">{{ downloadProgress }}% complete</span>
+                                    <span>{{ torrentInfo.numPeers }} {{ torrentInfo.numPeers === 1 ? 'peer' : 'peers' }}</span>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="space-y-1">
+                                    <div class="text-muted-foreground">Download</div>
+                                    <div class="font-mono">{{ formatSpeed(torrentInfo.downloadSpeed) }}</div>
+                                </div>
+                                <div class="space-y-1">
+                                    <div class="text-muted-foreground">Upload</div>
+                                    <div class="font-mono">{{ formatSpeed(torrentInfo.uploadSpeed) }}</div>
+                                </div>
+                            </div>
+                            <div v-if="torrentInfo.name" class="text-xs">
+                                <div class="text-muted-foreground">Torrent</div>
+                                <div class="truncate font-medium" :title="torrentInfo.name">{{ torrentInfo.name }}</div>
+                            </div>
+                        </template>
+                    </div>
+                    
                     <p v-if="torrentError" class="text-sm text-destructive">
                         {{ torrentError }}
                     </p>

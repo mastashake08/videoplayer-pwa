@@ -21,6 +21,7 @@ export interface TorrentInfo {
 // Global client shared across all instances of the composable
 let globalClient: WebTorrent.Instance | null = null;
 let clientRefCount = 0;
+let serverCreated = false;
 
 export function useWebTorrent() {
     const currentTorrent = ref<WebTorrent.Torrent | null>(null);
@@ -44,6 +45,29 @@ export function useWebTorrent() {
             const WebTorrentModule = await import('webtorrent');
             const WebTorrentLib = WebTorrentModule.default || WebTorrentModule;
             globalClient = new (WebTorrentLib as any)();
+            
+            // Set up service worker for streaming if available
+            if ('serviceWorker' in navigator && !serverCreated) {
+                try {
+                    console.log('[WebTorrent] Setting up service worker for streaming...');
+                    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+                    await navigator.serviceWorker.ready;
+                    
+                    // Create server with service worker controller
+                    if (navigator.serviceWorker.controller) {
+                        globalClient.createServer({ controller: navigator.serviceWorker.controller });
+                        serverCreated = true;
+                        console.log('[WebTorrent] Server created with service worker');
+                    } else {
+                        console.warn('[WebTorrent] Service worker controller not available yet');
+                    }
+                } catch (swErr) {
+                    console.warn('[WebTorrent] Service worker setup failed, will use fallback:', swErr);
+                }
+            } else if (!('serviceWorker' in navigator)) {
+                console.warn('[WebTorrent] Service workers not supported, streaming may be limited');
+            }
+            
             console.log('[WebTorrent] Global client created successfully');
             return globalClient;
         } catch (err) {
@@ -94,9 +118,11 @@ export function useWebTorrent() {
             }
 
             console.log('Found video file:', videoFile.name);
+            console.log('[WebTorrent] File size:', videoFile.length);
 
-            // Stream video file manually to create blob URL
-            console.log('[WebTorrent] Creating blob URL from stream...');
+            // Download file by streaming to blob
+            console.log('[WebTorrent] Streaming video file to blob...');
+            
             const stream = videoFile.createReadStream();
             const chunks: Uint8Array[] = [];
             
@@ -105,28 +131,38 @@ export function useWebTorrent() {
             });
             
             stream.on('end', () => {
-                console.log('[WebTorrent] Stream ended, creating blob...');
-                const blob = new Blob(chunks, { type: 'video/mp4' });
-                const objectURL = URL.createObjectURL(blob);
-                console.log('[WebTorrent] Blob URL created:', objectURL);
+                console.log('[WebTorrent] Stream complete, creating blob...');
                 
-                videoURL.value = objectURL;
+                // Determine MIME type from file extension
+                const mimeType = videoFile.name.endsWith('.webm') ? 'video/webm' : 
+                                videoFile.name.endsWith('.ogg') ? 'video/ogg' : 
+                                videoFile.name.endsWith('.mkv') ? 'video/x-matroska' :
+                                videoFile.name.endsWith('.avi') ? 'video/x-msvideo' :
+                                videoFile.name.endsWith('.mov') ? 'video/quicktime' :
+                                'video/mp4';
+                
+                const blob = new Blob(chunks, { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                
+                console.log('[WebTorrent] Blob URL created:', url);
+                videoURL.value = url;
                 isLoading.value = false;
                 updateInfo();
 
-                // Update info periodically
+                // Update info periodically while seeding
                 const interval = setInterval(updateInfo, 1000);
                 torrent.once('done', () => {
+                    console.log('[WebTorrent] Download complete');
                     clearInterval(interval);
                     updateInfo();
                 });
 
-                resolve(objectURL);
+                resolve(url);
             });
             
             stream.on('error', (streamErr: Error) => {
                 console.error('[WebTorrent] Stream error:', streamErr);
-                error.value = 'Failed to stream video from torrent';
+                error.value = 'Failed to download video from torrent';
                 isLoading.value = false;
                 reject(streamErr);
             });
@@ -151,26 +187,33 @@ export function useWebTorrent() {
     // Load torrent from magnet URI
     const loadMagnet = async (magnetURI: string): Promise<string | null> => {
         console.log('[WebTorrent] loadMagnet called with:', magnetURI.substring(0, 100));
+        
+        // Clean up existing video URL
+        if (videoURL.value) {
+            console.log('[WebTorrent] Revoking old video URL');
+            URL.revokeObjectURL(videoURL.value);
+            videoURL.value = null;
+        }
+        
         isLoading.value = true;
         error.value = null;
-        videoURL.value = null;
+        torrentInfo.value = null;
 
         try {
-            // Destroy existing client completely to avoid duplicates
-            if (globalClient) {
-                console.log('[WebTorrent] Existing global client found with', globalClient.torrents.length, 'torrents');
-                console.log('[WebTorrent] Torrent infoHashes:', globalClient.torrents.map(t => t.infoHash));
-                console.log('[WebTorrent] Destroying existing client...');
+            // Remove current torrent if exists, but keep client
+            if (currentTorrent.value && globalClient) {
+                console.log('[WebTorrent] Removing existing torrent:', currentTorrent.value.infoHash);
                 try {
-                    globalClient.destroy();
-                    console.log('[WebTorrent] Client destroyed');
+                    globalClient.remove(currentTorrent.value.infoHash);
+                    currentTorrent.value = null;
                 } catch (e) {
-                    console.warn('[WebTorrent] Failed to destroy client:', e);
+                    console.warn('[WebTorrent] Failed to remove torrent:', e);
                 }
-                globalClient = null;
-                currentTorrent.value = null;
-            } else {
-                console.log('[WebTorrent] No existing global client');
+            }
+            
+            // Ensure client exists
+            if (!globalClient) {
+                console.log('[WebTorrent] No existing global client, creating new one');
             }
 
             // Create fresh client
@@ -207,19 +250,30 @@ export function useWebTorrent() {
 
     // Stop current torrent
     const stopTorrent = () => {
+        console.log('[WebTorrent] stopTorrent called');
+        
         if (currentTorrent.value && globalClient) {
             try {
+                console.log('[WebTorrent] Removing torrent:', currentTorrent.value.infoHash);
                 globalClient.remove(currentTorrent.value.infoHash);
             } catch (e) {
-                console.warn('Failed to stop torrent:', e);
+                console.warn('[WebTorrent] Failed to stop torrent:', e);
             }
             currentTorrent.value = null;
             torrentInfo.value = null;
         }
+        
         if (videoURL.value) {
+            console.log('[WebTorrent] Revoking video URL');
             URL.revokeObjectURL(videoURL.value);
             videoURL.value = null;
         }
+        
+        // Reset loading and error states
+        isLoading.value = false;
+        error.value = null;
+        
+        console.log('[WebTorrent] Torrent stopped, ready for new load');
     };
 
     // Destroy WebTorrent client
