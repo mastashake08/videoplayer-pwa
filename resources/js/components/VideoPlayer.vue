@@ -32,9 +32,37 @@ const initPlayer = () => {
         aspectRatio: props.aspectRatio,
         sources: props.src ? [{ src: props.src, type: getVideoType(props.src) }] : [],
         poster: props.poster,
+        html5: {
+            vhs: {
+                overrideNative: true,
+            },
+            nativeVideoTracks: false,
+            nativeAudioTracks: false,
+            nativeTextTracks: false,
+        },
     };
 
     playerInstance.value = videojs(videoElement.value, options);
+    
+    // Add error handling
+    playerInstance.value.on('error', () => {
+        const error = playerInstance.value?.error();
+        console.error('[VideoPlayer] Error:', error);
+        if (error) {
+            console.error('[VideoPlayer] Error code:', error.code);
+            console.error('[VideoPlayer] Error message:', error.message);
+            
+            // Special message for HLS files loaded locally
+            if (props.src?.includes('.m3u8') && (props.src?.startsWith('blob:') || props.src?.startsWith('file:'))) {
+                console.error('[VideoPlayer] Note: HLS (.m3u8) files cannot be played from local file system. Please use a remote URL instead.');
+            }
+        }
+    });
+    
+    // Log loaded source
+    playerInstance.value.on('loadedmetadata', () => {
+        console.log('[VideoPlayer] Video metadata loaded successfully');
+    });
 };
 
 const getVideoType = (url: string): string => {
@@ -43,7 +71,7 @@ const getVideoType = (url: string): string => {
         return 'video/mp4'; // Default to mp4 for blob URLs
     }
     
-    const extension = url.split('.').pop()?.toLowerCase();
+    const extension = url.split('.').pop()?.toLowerCase().split('?')[0]; // Remove query params
     const typeMap: Record<string, string> = {
         mp4: 'video/mp4',
         webm: 'video/webm',
@@ -51,6 +79,8 @@ const getVideoType = (url: string): string => {
         mkv: 'video/x-matroska',
         avi: 'video/x-msvideo',
         mov: 'video/quicktime',
+        m3u8: 'application/x-mpegURL', // HLS streams
+        m3u: 'application/x-mpegURL',
     };
     return typeMap[extension || ''] || 'video/mp4';
 };

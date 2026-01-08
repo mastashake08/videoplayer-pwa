@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { router } from '@inertiajs/vue3';
 import { Heart } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import { toggle as favoritesToggle } from '@/routes/favorites';
 
@@ -24,6 +24,11 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const favorited = ref(props.isFavorited);
+
+// Watch for prop changes
+watch(() => props.isFavorited, (newValue) => {
+    favorited.value = newValue;
+});
 
 const toggleFavorite = () => {
     router.post(

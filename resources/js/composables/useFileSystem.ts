@@ -66,6 +66,8 @@ export function useFileSystem() {
                                 '.mkv',
                                 '.avi',
                                 '.mov',
+                                '.m3u8',
+                                '.m3u',
                             ],
                         },
                     },

@@ -39,8 +39,19 @@ const handleFileSystemPicker = async () => {
     try {
         const files = await openFilePicker({ multiple: false });
         if (files.length > 0) {
-            const url = createFileURL(files[0]);
-            emit('sourceSelected', url, 'local');
+            const file = files[0];
+            
+            // Check if it's an m3u8 file
+            if (file.name.toLowerCase().endsWith('.m3u8')) {
+                // Read m3u8 content and handle it specially
+                const url = await handleM3U8File(file);
+                if (url) {
+                    emit('sourceSelected', url, 'local');
+                }
+            } else {
+                const url = createFileURL(file);
+                emit('sourceSelected', url, 'local');
+            }
         }
     } finally {
         isLoading.value = false;
@@ -48,12 +59,33 @@ const handleFileSystemPicker = async () => {
 };
 
 // Handle file upload
-const handleFileUpload = (event: Event) => {
+const handleFileUpload = async (event: Event) => {
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0];
     if (file) {
-        const url = URL.createObjectURL(file);
-        emit('sourceSelected', url, 'upload');
+        // Check if it's an m3u8 file
+        if (file.name.toLowerCase().endsWith('.m3u8')) {
+            const url = await handleM3U8File(file);
+            if (url) {
+                emit('sourceSelected', url, 'upload');
+            }
+        } else {
+            const url = URL.createObjectURL(file);
+            emit('sourceSelected', url, 'upload');
+        }
+    }
+};
+
+// Handle m3u8 files by reading content as text
+const handleM3U8File = async (file: File): Promise<string | null> => {
+    try {
+        const text = await file.text();
+        // Create a blob with the m3u8 content
+        const blob = new Blob([text], { type: 'application/x-mpegURL' });
+        return URL.createObjectURL(blob);
+    } catch (error) {
+        console.error('Error handling m3u8 file:', error);
+        return null;
     }
 };
 
