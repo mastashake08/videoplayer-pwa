@@ -6,6 +6,7 @@ import { Head } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import VideoPlayer from '@/components/VideoPlayer.vue';
 import VideoSourceSelector from '@/components/VideoSourceSelector.vue';
+import FavoriteButton from '@/components/FavoriteButton.vue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Info } from 'lucide-vue-next';
@@ -19,11 +20,43 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const videoSource = ref<string | null>(null);
 const sourceType = ref<'local' | 'upload' | 'magnet' | 'remote' | null>(null);
+const originalSource = ref<string | null>(null); // Store original magnet link
+const isFavorited = ref(false);
 const videoPlayer = ref<InstanceType<typeof VideoPlayer> | null>(null);
 
-const handleSourceSelected = (url: string, type: 'local' | 'upload' | 'magnet' | 'remote') => {
+const checkFavoriteStatus = async () => {
+    if (!originalSource.value || sourceType.value === 'local' || sourceType.value === 'upload') {
+        isFavorited.value = false;
+        return;
+    }
+    
+    try {
+        const response = await fetch('/favorites/check', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            },
+            body: JSON.stringify({
+                video_identifier: originalSource.value,
+            }),
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            isFavorited.value = data.favorited;
+        }
+    } catch (error) {
+        console.error('Failed to check favorite status:', error);
+    }
+};
+
+const handleSourceSelected = (url: string, type: 'local' | 'upload' | 'magnet' | 'remote', original?: string) => {
     videoSource.value = url;
     sourceType.value = type;
+    // For magnet links, use the original magnet link; otherwise use the URL
+    originalSource.value = original || url;
+    checkFavoriteStatus();
 };
 
 const getSourceTypeLabel = () => {
@@ -55,10 +88,21 @@ const getSourceTypeLabel = () => {
                 <div class="lg:col-span-2">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Player</CardTitle>
-                            <CardDescription v-if="sourceType">
-                                Source: {{ getSourceTypeLabel() }}
-                            </CardDescription>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <CardTitle>Player</CardTitle>
+                                    <CardDescription v-if="sourceType">
+                                        Source: {{ getSourceTypeLabel() }}
+                                    </CardDescription>
+                                </div>
+                                <FavoriteButton
+                                    v-if="videoSource && (sourceType === 'magnet' || sourceType === 'remote')"
+                                    :video-type="sourceType === 'magnet' ? 'magnet' : 'url'"
+                                    :video-identifier="originalSource || videoSource"
+                                    :title="getSourceTypeLabel()"
+                                    :is-favorited="isFavorited"
+                                />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div v-if="videoSource" class="space-y-4">

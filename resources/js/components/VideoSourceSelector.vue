@@ -10,7 +10,7 @@ import { FileVideo, Link, Magnet, Upload } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
 
 interface Emits {
-    (e: 'sourceSelected', url: string, type: 'local' | 'upload' | 'magnet' | 'remote'): void;
+    (e: 'sourceSelected', url: string, type: 'local' | 'upload' | 'magnet' | 'remote', originalSource?: string): void;
 }
 
 const emit = defineEmits<Emits>();
@@ -61,9 +61,10 @@ const handleFileUpload = (event: Event) => {
 const handleMagnetLink = async () => {
     if (!magnetInput.value.trim()) return;
 
-    const url = await loadMagnet(magnetInput.value);
+    const magnetLink = magnetInput.value; // Store original magnet link
+    const url = await loadMagnet(magnetLink);
     if (url) {
-        emit('sourceSelected', url, 'magnet');
+        emit('sourceSelected', url, 'magnet', magnetLink); // Pass original magnet link
     }
 };
 
