@@ -38,6 +38,11 @@ const initPlayer = () => {
 };
 
 const getVideoType = (url: string): string => {
+    // Check if it's a blob URL
+    if (url.startsWith('blob:')) {
+        return 'video/mp4'; // Default to mp4 for blob URLs
+    }
+    
     const extension = url.split('.').pop()?.toLowerCase();
     const typeMap: Record<string, string> = {
         mp4: 'video/mp4',
@@ -52,10 +57,13 @@ const getVideoType = (url: string): string => {
 
 const updateSource = (src: string) => {
     if (playerInstance.value) {
+        console.log('[VideoPlayer] Updating source to:', src);
         playerInstance.value.src({
             src,
             type: getVideoType(src),
         });
+        playerInstance.value.load();
+        console.log('[VideoPlayer] Source updated, player loaded');
     }
 };
 

@@ -18,28 +18,34 @@ export interface TorrentInfo {
     numPeers: number;
 }
 
+// Global client shared across all instances of the composable
+let globalClient: WebTorrent.Instance | null = null;
+let clientRefCount = 0;
+
 export function useWebTorrent() {
-    const client = ref<WebTorrent.Instance | null>(null);
     const currentTorrent = ref<WebTorrent.Torrent | null>(null);
     const torrentInfo = ref<TorrentInfo | null>(null);
     const isLoading = ref(false);
     const error = ref<string | null>(null);
     const videoURL = ref<string | null>(null);
 
-    // Initialize WebTorrent client
+    clientRefCount++;
+    console.log('[WebTorrent] useWebTorrent() called, ref count:', clientRefCount);
+
+    // Initialize WebTorrent client (singleton)
     const initClient = async () => {
-        if (client.value) {
-            console.log('[WebTorrent] Reusing existing client, torrents:', client.value.torrents.length);
-            return client.value;
+        if (globalClient) {
+            console.log('[WebTorrent] Reusing global client, torrents:', globalClient.torrents.length);
+            return globalClient;
         }
 
         try {
-            console.log('[WebTorrent] Creating new client...');
+            console.log('[WebTorrent] Creating new global client...');
             const WebTorrentModule = await import('webtorrent');
             const WebTorrentLib = WebTorrentModule.default || WebTorrentModule;
-            client.value = new (WebTorrentLib as any)();
-            console.log('[WebTorrent] Client created successfully');
-            return client.value;
+            globalClient = new (WebTorrentLib as any)();
+            console.log('[WebTorrent] Global client created successfully');
+            return globalClient;
         } catch (err) {
             error.value = 'Failed to initialize WebTorrent';
             console.error('[WebTorrent] Initialization error:', err);
@@ -89,16 +95,22 @@ export function useWebTorrent() {
 
             console.log('Found video file:', videoFile.name);
 
-            // Render video file to blob URL
-            videoFile.getBlobURL((err, url) => {
-                if (err) {
-                    error.value = 'Failed to load video from torrent';
-                    isLoading.value = false;
-                    reject(err);
-                    return;
-                }
-
-                videoURL.value = url;
+            // Stream video file manually to create blob URL
+            console.log('[WebTorrent] Creating blob URL from stream...');
+            const stream = videoFile.createReadStream();
+            const chunks: Uint8Array[] = [];
+            
+            stream.on('data', (chunk: Uint8Array) => {
+                chunks.push(chunk);
+            });
+            
+            stream.on('end', () => {
+                console.log('[WebTorrent] Stream ended, creating blob...');
+                const blob = new Blob(chunks, { type: 'video/mp4' });
+                const objectURL = URL.createObjectURL(blob);
+                console.log('[WebTorrent] Blob URL created:', objectURL);
+                
+                videoURL.value = objectURL;
                 isLoading.value = false;
                 updateInfo();
 
@@ -109,7 +121,14 @@ export function useWebTorrent() {
                     updateInfo();
                 });
 
-                resolve(url);
+                resolve(objectURL);
+            });
+            
+            stream.on('error', (streamErr: Error) => {
+                console.error('[WebTorrent] Stream error:', streamErr);
+                error.value = 'Failed to stream video from torrent';
+                isLoading.value = false;
+                reject(streamErr);
             });
         };
 
@@ -138,20 +157,20 @@ export function useWebTorrent() {
 
         try {
             // Destroy existing client completely to avoid duplicates
-            if (client.value) {
-                console.log('[WebTorrent] Existing client found with', client.value.torrents.length, 'torrents');
-                console.log('[WebTorrent] Torrent infoHashes:', client.value.torrents.map(t => t.infoHash));
+            if (globalClient) {
+                console.log('[WebTorrent] Existing global client found with', globalClient.torrents.length, 'torrents');
+                console.log('[WebTorrent] Torrent infoHashes:', globalClient.torrents.map(t => t.infoHash));
                 console.log('[WebTorrent] Destroying existing client...');
                 try {
-                    client.value.destroy();
+                    globalClient.destroy();
                     console.log('[WebTorrent] Client destroyed');
                 } catch (e) {
                     console.warn('[WebTorrent] Failed to destroy client:', e);
                 }
-                client.value = null;
+                globalClient = null;
                 currentTorrent.value = null;
             } else {
-                console.log('[WebTorrent] No existing client');
+                console.log('[WebTorrent] No existing global client');
             }
 
             // Create fresh client
@@ -188,9 +207,9 @@ export function useWebTorrent() {
 
     // Stop current torrent
     const stopTorrent = () => {
-        if (currentTorrent.value && client.value) {
+        if (currentTorrent.value && globalClient) {
             try {
-                client.value.remove(currentTorrent.value.infoHash);
+                globalClient.remove(currentTorrent.value.infoHash);
             } catch (e) {
                 console.warn('Failed to stop torrent:', e);
             }
@@ -206,9 +225,14 @@ export function useWebTorrent() {
     // Destroy WebTorrent client
     const destroy = () => {
         stopTorrent();
-        if (client.value) {
-            client.value.destroy();
-            client.value = null;
+        clientRefCount--;
+        console.log('[WebTorrent] destroy() called, ref count:', clientRefCount);
+        
+        // Only destroy global client when no more instances are using it
+        if (clientRefCount === 0 && globalClient) {
+            console.log('[WebTorrent] Last instance, destroying global client');
+            globalClient.destroy();
+            globalClient = null;
         }
     };
 
