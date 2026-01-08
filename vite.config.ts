@@ -4,6 +4,7 @@ import vue from '@vitejs/plugin-vue';
 import laravel from 'laravel-vite-plugin';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 export default defineConfig({
     plugins: [
@@ -22,6 +23,14 @@ export default defineConfig({
                     base: null,
                     includeAbsolute: false,
                 },
+            },
+        }),
+        nodePolyfills({
+            include: ['stream', 'util', 'buffer', 'process', 'events', 'path'],
+            globals: {
+                Buffer: true,
+                global: true,
+                process: true,
             },
         }),
         VitePWA({

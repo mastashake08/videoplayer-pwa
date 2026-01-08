@@ -73,22 +73,22 @@ const handleRemoteUrl = () => {
 <template>
     <div class="w-full space-y-4">
         <Tabs default-value="filesystem" class="w-full">
-            <TabsList class="grid w-full grid-cols-4">
-                <TabsTrigger value="filesystem" :disabled="!isFileSystemSupported">
-                    <FileVideo class="mr-2 h-4 w-4" />
-                    Local Files
+            <TabsList class="grid w-full grid-cols-2 gap-2 md:grid-cols-4">
+                <TabsTrigger value="filesystem" :disabled="!isFileSystemSupported" class="gap-1">
+                    <FileVideo class="h-4 w-4" />
+                    <span class="hidden sm:inline">Local Files</span>
                 </TabsTrigger>
-                <TabsTrigger value="upload">
-                    <Upload class="mr-2 h-4 w-4" />
-                    Upload
+                <TabsTrigger value="upload" class="gap-1">
+                    <Upload class="h-4 w-4" />
+                    <span class="hidden sm:inline">Upload</span>
                 </TabsTrigger>
-                <TabsTrigger value="magnet">
-                    <Magnet class="mr-2 h-4 w-4" />
-                    Magnet
+                <TabsTrigger value="magnet" class="gap-1">
+                    <Magnet class="h-4 w-4" />
+                    <span class="hidden sm:inline">Magnet</span>
                 </TabsTrigger>
-                <TabsTrigger value="remote">
-                    <Link class="mr-2 h-4 w-4" />
-                    URL
+                <TabsTrigger value="remote" class="gap-1">
+                    <Link class="h-4 w-4" />
+                    <span class="hidden sm:inline">URL</span>
                 </TabsTrigger>
             </TabsList>
 

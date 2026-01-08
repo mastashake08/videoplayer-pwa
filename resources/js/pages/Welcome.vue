@@ -64,7 +64,7 @@ const features = [
 <template>
     <WelcomeLayout>
         <!-- Hero Section -->
-        <section class="container space-y-6 pb-8 pt-6 md:pb-12 md:pt-10 lg:py-32">
+        <section class="container mx-auto max-w-7xl space-y-6 px-4 pb-8 pt-6 md:px-6 md:pb-12 md:pt-10 lg:py-32">
             <div class="mx-auto flex max-w-[64rem] flex-col items-center gap-4 text-center">
                 <Badge variant="secondary" class="text-sm">
                     <Play class="mr-1 h-3 w-3" />
@@ -101,7 +101,7 @@ const features = [
         </section>
 
         <!-- Demo Section -->
-        <section class="container space-y-6 py-8 md:py-12 lg:py-24">
+        <section class="container mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-6 md:py-12 lg:py-24">
             <div class="mx-auto flex max-w-[58rem] flex-col items-center space-y-4 text-center">
                 <h2 class="text-3xl font-bold leading-[1.1] sm:text-3xl md:text-6xl">
                     Try It Now
@@ -160,7 +160,7 @@ const features = [
         </section>
 
         <!-- Features Section -->
-        <section class="container space-y-6 py-8 md:py-12 lg:py-24">
+        <section class="container mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-6 md:py-12 lg:py-24">
             <div class="mx-auto flex max-w-[58rem] flex-col items-center space-y-4 text-center">
                 <h2 class="text-3xl font-bold leading-[1.1] sm:text-3xl md:text-6xl">
                     Features
@@ -186,7 +186,7 @@ const features = [
         </section>
 
         <!-- How It Works Section -->
-        <section class="container space-y-6 py-8 md:py-12 lg:py-24">
+        <section class="container mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-6 md:py-12 lg:py-24">
             <div class="mx-auto flex max-w-[58rem] flex-col items-center space-y-4 text-center">
                 <h2 class="text-3xl font-bold leading-[1.1] sm:text-3xl md:text-6xl">
                     How It Works
@@ -270,7 +270,7 @@ const features = [
         </section>
 
         <!-- CTA Section -->
-        <section class="container py-8 md:py-12 lg:py-24">
+        <section class="container mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12 lg:py-24">
             <div class="mx-auto flex max-w-[58rem] flex-col items-center justify-center gap-4 text-center">
                 <h2 class="text-3xl font-bold leading-[1.1] sm:text-3xl md:text-6xl">
                     Ready to Get Started?

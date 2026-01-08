@@ -2,6 +2,7 @@
 import { Head, Link } from '@inertiajs/vue3';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { Button } from '@/components/ui/button';
+import { dashboard, login, register } from '@/routes';
 
 interface Props {
     title?: string;
@@ -21,7 +22,7 @@ withDefaults(defineProps<Props>(), {
     <div class="relative flex min-h-screen flex-col bg-background">
         <!-- Header -->
         <header class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div class="container flex h-14 items-center">
+            <div class="container mx-auto flex h-14 max-w-7xl items-center px-4 md:px-6">
                 <div class="mr-4 flex">
                     <Link href="/" class="mr-6 flex items-center space-x-2">
                         <AppLogoIcon class="h-6 w-6" />
@@ -63,7 +64,7 @@ withDefaults(defineProps<Props>(), {
 
         <!-- Footer -->
         <footer class="border-t py-6 md:py-0">
-            <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+            <div class="container mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 md:h-24 md:flex-row md:px-6">
                 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
                     <AppLogoIcon class="h-6 w-6" />
                     <p class="text-center text-sm leading-loose text-muted-foreground md:text-left">
@@ -74,14 +75,3 @@ withDefaults(defineProps<Props>(), {
         </footer>
     </div>
 </template>
-
-<script>
-import { dashboard, login, register } from '@/routes';
-export default {
-    methods: {
-        dashboard,
-        login,
-        register,
-    },
-};
-</script>

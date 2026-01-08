@@ -219,6 +219,15 @@ Best for: Videos hosted on servers or CDNs
 4. Click "Load"
 ```
 
+**Supported Formats**: MP4 (H.264/AAC), WebM (VP8/VP9), OGG (Theora)
+
+**Note**: Browser codec support varies. AVI, MKV, and MOV files may not work in all browsers. For best compatibility, use MP4 with H.264 video and AAC audio.
+
+**Example URLs to test**:
+- Big Buck Bunny (MP4): `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4`
+- Elephant's Dream (MP4): `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4`
+- Sintel (WebM): `https://download.blender.org/demo/movies/BBB/bbb_sunflower_1080p_30fps_normal.mp4`
+
 ### PWA Installation
 
 #### Desktop (Chrome/Edge)
