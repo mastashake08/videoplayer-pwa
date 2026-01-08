@@ -61,13 +61,23 @@ const handleFileSystemPicker = async () => {
 // Handle file upload
 const handleFileUpload = async (event: Event) => {
     const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    if (file) {
+    const files = target.files;
+    if (files && files.length > 0) {
+        const file = files[0];
         // Check if it's an m3u8 file
         if (file.name.toLowerCase().endsWith('.m3u8')) {
-            const url = await handleM3U8File(file);
-            if (url) {
-                emit('sourceSelected', url, 'upload');
+            // If multiple files selected, try to handle segments
+            if (files.length > 1) {
+                const url = await handleM3U8WithSegments(file, Array.from(files));
+                if (url) {
+                    emit('sourceSelected', url, 'upload');
+                }
+            } else {
+                // Try with just the m3u8 file (won't work with relative segments)
+                const url = await handleM3U8File(file);
+                if (url) {
+                    emit('sourceSelected', url, 'upload');
+                }
             }
         } else {
             const url = URL.createObjectURL(file);
@@ -76,13 +86,72 @@ const handleFileUpload = async (event: Event) => {
     }
 };
 
-// Handle m3u8 files by reading content as text
+// Handle m3u8 with segment files
+const handleM3U8WithSegments = async (m3u8File: File, allFiles: File[]): Promise<string | null> => {
+    try {
+        // Read the m3u8 content
+        const m3u8Text = await m3u8File.text();
+        
+        // Create a map of segment filenames to blob URLs
+        const segmentMap = new Map<string, string>();
+        
+        // Create blob URLs for all segment files
+        for (const file of allFiles) {
+            if (file !== m3u8File) {
+                const blobUrl = URL.createObjectURL(file);
+                segmentMap.set(file.name, blobUrl);
+            }
+        }
+        
+        // Rewrite m3u8 content to use blob URLs
+        let rewrittenM3U8 = m3u8Text;
+        const lines = m3u8Text.split('\n');
+        const newLines: string[] = [];
+        
+        for (const line of lines) {
+            // Check if line is a segment reference (not a comment or metadata)
+            if (!line.startsWith('#') && line.trim().length > 0) {
+                // Extract filename from path
+                const filename = line.split('/').pop()?.split('?')[0] || '';
+                if (segmentMap.has(filename)) {
+                    newLines.push(segmentMap.get(filename)!);
+                } else {
+                    newLines.push(line); // Keep original if we don't have the file
+                }
+            } else {
+                newLines.push(line);
+            }
+        }
+        
+        rewrittenM3U8 = newLines.join('\n');
+        
+        // Create blob with rewritten content
+        const m3u8Blob = new Blob([rewrittenM3U8], { type: 'application/x-mpegURL' });
+        return URL.createObjectURL(m3u8Blob);
+    } catch (error) {
+        console.error('Error handling m3u8 with segments:', error);
+        return null;
+    }
+};
+
+// Handle m3u8 files by reading content and creating proper blob
 const handleM3U8File = async (file: File): Promise<string | null> => {
     try {
-        const text = await file.text();
-        // Create a blob with the m3u8 content
-        const blob = new Blob([text], { type: 'application/x-mpegURL' });
-        return URL.createObjectURL(blob);
+        // Create initial blob URL for the file
+        const blobUrl = URL.createObjectURL(file);
+        
+        // Fetch the content from the blob URL
+        const response = await fetch(blobUrl);
+        const text = await response.text();
+        
+        // Create a new blob with the m3u8 content and correct MIME type
+        const m3u8Blob = new Blob([text], { type: 'application/x-mpegURL' });
+        const m3u8Url = URL.createObjectURL(m3u8Blob);
+        
+        // Clean up the original blob URL
+        //URL.revokeObjectURL(blobUrl);
+        
+        return m3u8Url;
     } catch (error) {
         console.error('Error handling m3u8 file:', error);
         return null;
@@ -159,13 +228,14 @@ const handleRemoteUrl = () => {
                 <div class="space-y-2">
                     <Label for="upload-input">Upload video file</Label>
                     <p class="text-sm text-muted-foreground">
-                        Upload a video file from your device
+                        Upload a video file from your device. For .m3u8 files, select the playlist and all segment files together.
                     </p>
                     <Input
                         id="upload-input"
                         ref="uploadInput"
                         type="file"
-                        accept="video/*, .m3u8, .mpd, .m3u"
+                        accept="video/*, .m3u8, .mpd, .m3u, .ts"
+                        multiple
                         @change="handleFileUpload"
                         class="cursor-pointer"
                     />
