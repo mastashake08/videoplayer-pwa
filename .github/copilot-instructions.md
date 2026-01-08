@@ -119,6 +119,11 @@ Uses shadcn-vue (Reka UI port) with New York v4 style. Generate components with 
 **Making API-style requests** (rare in this stack):
 Use Inertia's router methods: `router.post()`, `router.put()`, etc. Form submissions typically post to Laravel routes that redirect back with flash messages.
 
+
+** Design patterns**:
+- Use TDD
+- Use Service classes for business logic
+
 ## Video Player Architecture
 
 **Video Sources** (priority order):

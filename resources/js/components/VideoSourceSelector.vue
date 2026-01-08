@@ -73,22 +73,22 @@ const handleRemoteUrl = () => {
 <template>
     <div class="w-full space-y-4">
         <Tabs default-value="filesystem" class="w-full">
-            <TabsList class="grid w-full grid-cols-2 gap-2 md:grid-cols-4">
-                <TabsTrigger value="filesystem" :disabled="!isFileSystemSupported" class="gap-1">
-                    <FileVideo class="h-4 w-4" />
-                    <span class="hidden sm:inline">Local Files</span>
+            <TabsList class="grid w-full grid-cols-4 gap-1 p-1">
+                <TabsTrigger value="filesystem" :disabled="!isFileSystemSupported" class="flex items-center justify-center gap-2 px-4 py-3 outline-none ring-0 focus-visible:ring-0">
+                    <FileVideo class="h-4 w-4 shrink-0" />
+                    <span class="text-xs font-medium">Local</span>
                 </TabsTrigger>
-                <TabsTrigger value="upload" class="gap-1">
-                    <Upload class="h-4 w-4" />
-                    <span class="hidden sm:inline">Upload</span>
+                <TabsTrigger value="upload" class="flex items-center justify-center gap-2 px-4 py-3 outline-none ring-0 focus-visible:ring-0">
+                    <Upload class="h-4 w-4 shrink-0" />
+                    <span class="text-xs font-medium">Upload</span>
                 </TabsTrigger>
-                <TabsTrigger value="magnet" class="gap-1">
-                    <Magnet class="h-4 w-4" />
-                    <span class="hidden sm:inline">Magnet</span>
+                <TabsTrigger value="magnet" class="flex items-center justify-center gap-2 px-4 py-3 outline-none ring-0 focus-visible:ring-0">
+                    <Magnet class="h-4 w-4 shrink-0" />
+                    <span class="text-xs font-medium">Magnet</span>
                 </TabsTrigger>
-                <TabsTrigger value="remote" class="gap-1">
-                    <Link class="h-4 w-4" />
-                    <span class="hidden sm:inline">URL</span>
+                <TabsTrigger value="remote" class="flex items-center justify-center gap-2 px-4 py-3 outline-none ring-0 focus-visible:ring-0">
+                    <Link class="h-4 w-4 shrink-0" />
+                    <span class="text-xs font-medium">URL</span>
                 </TabsTrigger>
             </TabsList>
 
