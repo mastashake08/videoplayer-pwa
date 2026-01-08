@@ -7,6 +7,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 export default defineConfig({
+    resolve: {
+        alias: {
+            crypto: 'crypto-browserify',
+        },
+    },
     plugins: [
         laravel({
             input: ['resources/js/app.ts'],
@@ -26,7 +31,7 @@ export default defineConfig({
             },
         }),
         nodePolyfills({
-            include: ['stream', 'util', 'buffer', 'process', 'events', 'path'],
+            include: ['stream', 'util', 'buffer', 'process', 'events', 'path', 'crypto'],
             globals: {
                 Buffer: true,
                 global: true,
